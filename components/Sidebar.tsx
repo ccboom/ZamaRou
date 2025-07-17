@@ -5,6 +5,14 @@ import { decodeEventLog } from 'viem';
 import zamaIcon from '../public/imgs/216226803.svg';
 import WalletConnect from './WalletConnect';
 
+// 定义 getUserBets 返回的 bet 类型
+interface Bet {
+  player: `0x${string}`;
+  amount: bigint;
+  betType: number;
+  number: bigint;
+}
+
 const zartcABI = [
   {
     constant: true,
@@ -229,7 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
         functionName: 'roundResults',
         args: [round],
       });
-      return result;
+      return result as [bigint, boolean, boolean] | null; // 指定返回类型
     } catch (error) {
       console.error('获取轮次结果失败:', error);
       return null;
@@ -244,8 +252,8 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
         abi: rouletteGameABI,
         functionName: 'getUserBets',
         args: [address, BigInt(Number(currentRound) - 1)],
-      });
-      const updatedBets = bets.map((bet: any) => ({
+      }) as Bet[];
+      const updatedBets = bets.map((bet: Bet) => ({
         betType: bet.betType,
         number: Number(bet.number),
         amount: (Number(bet.amount) / 10 ** (decimals || 18)).toString(),
@@ -292,8 +300,8 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
   useEffect(() => {
     if (currentRound && currentRound > 0n) {
       fetchRoundResult(BigInt(Number(currentRound) - 1)).then((result) => {
-        if (result && result.fulfilled) {
-          const color = result.number === 0 ? '绿色' : result.isRed ? '黄色' : '蓝色';
+        if (result && result[2]) { // result.fulfilled
+          const color = result[0] === 0n ? '绿色' : result[1] ? '黄色' : '蓝色';
           const lastBet = userBets.length > 0 ? userBets[userBets.length - 1] : null;
           let userWon = false;
           if (lastBet) {
@@ -312,15 +320,15 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
                 ? '1 to 18'
                 : '19 to 36'
             ];
-            userWon = checkIfUserWon(betConfig, Number(result.number), result.isRed);
+            userWon = checkIfUserWon(betConfig, Number(result[0]), result[1]);
           }
           setLastResult({
             round: Number(currentRound) - 1,
-            winningNumber: Number(result.number),
-            isRed: result.isRed,
+            winningNumber: Number(result[0]),
+            isRed: result[1],
             userWon,
           });
-          setTargetNumber?.(Number(result.number)); // 初始化时传递最新结果
+          setTargetNumber?.(Number(result[0])); // 初始化时传递最新结果
         }
       });
       fetchUserBets();
@@ -443,7 +451,7 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
     }
   };
 
-  const formatAmount = (amount: any) => {
+  const formatAmount = (amount: bigint | null | undefined) => {
     if (!amount || !decimals) return '0';
     return (Number(amount) / Math.pow(10, decimals)).toFixed(3);
   };
