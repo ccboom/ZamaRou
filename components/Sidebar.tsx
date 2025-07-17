@@ -230,6 +230,10 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
   };
 
   const fetchRoundResult = async (round: bigint) => {
+    if (!publicClient) {
+      console.error('publicClient is undefined')
+      return null
+    }
     try {
       const result = await publicClient.readContract({
         address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
