@@ -20,8 +20,16 @@ const ABI = [
   }
 ] as const;
 
+// 定义错误类型
+type ContractError = {
+  message?: string;
+  shortMessage?: string;
+  code?: number;
+  details?: string;
+};
+
 // 安全获取错误消息的函数
-const getErrorMessage = (error: any) => {
+const getErrorMessage = (error: ContractError | null | undefined): string => {
   if (!error) return '未知错误';
   
   // 用户取消交易的情况
@@ -30,13 +38,18 @@ const getErrorMessage = (error: any) => {
   }
   
   // 优先使用 shortMessage（如果存在）
-  if ('shortMessage' in error) {
+  if (error.shortMessage) {
     return error.shortMessage;
   }
   
   // 使用 message（如果存在）
-  if ('message' in error) {
+  if (error.message) {
     return error.message;
+  }
+  
+  // 使用 details（如果存在）
+  if (error.details) {
+    return error.details;
   }
   
   return '交易失败';
