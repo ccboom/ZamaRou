@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from 'wagmi';
@@ -231,8 +232,8 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
 
   const fetchRoundResult = async (round: bigint) => {
     if (!publicClient) {
-      console.error('publicClient is undefined')
-      return null
+      console.error('publicClient is undefined');
+      return null; // 或者抛出错误，根据业务需求
     }
     try {
       const result = await publicClient.readContract({
@@ -249,7 +250,11 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
   };
 
   const fetchUserBets = async () => {
-    if (!publicClient || !address || !currentRound) return;
+    if (!publicClient) {
+      console.error('publicClient is undefined');
+      return null; // 或者抛出错误，根据业务需求
+    }
+    if (!address || !currentRound) return;
     try {
       const bets = await publicClient.readContract({
         address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
@@ -257,12 +262,13 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
         functionName: 'getUserBets',
         args: [address, BigInt(Number(currentRound) - 1)],
       }) as Bet[];
-      const updatedBets = bets.map((bet: Bet) => ({
+      const decimalsNumber = Number(decimals) || 18;
+      const updatedBets = bets.map(bet => ({
         betType: bet.betType,
         number: Number(bet.number),
-        const decimalsNumber = typeof decimals === 'number' ? decimals : 18;
         amount: (Number(bet.amount) / 10 ** decimalsNumber).toString(),
         round: Number(currentRound) - 1,
+        userWon: false, // 添加默认值
       }));
       setUserBets(updatedBets);
     } catch (error) {
@@ -270,37 +276,54 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
     }
   };
 
-  useEffect(() => {
-    if (!publicClient || !currentRound || currentRound <= 0n) return;
 
-    const unwatch = publicClient.watchContractEvent({
-      address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
-      abi: rouletteGameABI,
-      eventName: 'ResultFulfilled',
-      onLogs: (logs) => {
-        const event = logs[0];
-        const decoded = decodeEventLog({
-          abi: rouletteGameABI,
-          data: event.data,
-          topics: event.topics,
-        });
-        const { round, number, isRed } = decoded.args;
-        const betConfig = selectedBet ? BET_TYPE_MAPPING[selectedBet] : null;
-        const color = number === 0 ? '绿色' : isRed ? '黄色' : '蓝色';
-        setLastResult({
-          round: Number(round),
-          winningNumber: Number(number),
-          isRed,
-          userWon: betConfig ? checkIfUserWon(betConfig, Number(number), isRed) : false,
-        });
-        setShowResult(true);
-        setTargetNumber?.(Number(number)); // 传递结果给 Roulette
-        setTimeout(() => setShowResult(false), 3000);
-      },
-    });
 
-    return () => unwatch();
-  }, [publicClient, currentRound, selectedBet, decimals, setTargetNumber]);
+
+useEffect(() => {
+  if (!publicClient || !currentRound || typeof currentRound !== 'bigint' || currentRound <= 0n) return;
+  
+    // Define the interface for ResultFulfilled event arguments
+  interface ResultFulfilledArgs {
+    round: bigint;
+    number: bigint;
+    isRed: boolean;
+  }
+
+
+  const unwatch = publicClient.watchContractEvent({
+    address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
+    abi: rouletteGameABI,
+    eventName: 'ResultFulfilled',
+    onLogs: (logs) => {
+      const event = logs[0];
+      const decoded = decodeEventLog({
+        abi: rouletteGameABI,
+        data: event.data,
+        topics: event.topics,
+      });as { args: ResultFulfilledArgs }; // Explicitly type the decoded output
+      
+      const { round, number, isRed } = decoded.args;
+      const betConfig = selectedBet ? BET_TYPE_MAPPING[selectedBet] : null;
+      const color = number === 0n? '绿色' : isRed ? '黄色' : '蓝色';
+      setLastResult({
+        round: Number(round),
+        winningNumber: Number(number),
+        isRed,
+        userWon: betConfig ? checkIfUserWon(betConfig, Number(number), isRed) : false,
+      });
+      setShowResult(true);
+      setTargetNumber?.(Number(number)); // 传递结果给 Roulette
+      setTimeout(() => setShowResult(false), 3000);
+    },
+  });
+
+  return () => unwatch();
+}, [publicClient, currentRound, selectedBet, decimals, setTargetNumber]);
+
+
+
+
+
 
   useEffect(() => {
     if (currentRound && currentRound > 0n) {
