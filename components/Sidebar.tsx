@@ -260,7 +260,8 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
       const updatedBets = bets.map((bet: Bet) => ({
         betType: bet.betType,
         number: Number(bet.number),
-        amount: (Number(bet.amount) / 10 ** (decimals || 18)).toString(),
+        const decimalsNumber = typeof decimals === 'number' ? decimals : 18;
+        amount: (Number(bet.amount) / 10 ** decimalsNumber).toString(),
         round: Number(currentRound) - 1,
       }));
       setUserBets(updatedBets);
