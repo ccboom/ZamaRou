@@ -20,6 +20,28 @@ const ABI = [
   }
 ] as const;
 
+// 安全获取错误消息的函数
+const getErrorMessage = (error: any) => {
+  if (!error) return '未知错误';
+  
+  // 用户取消交易的情况
+  if (error.message?.includes('rejected') || error.code === 4001) {
+    return '用户取消了交易';
+  }
+  
+  // 优先使用 shortMessage（如果存在）
+  if ('shortMessage' in error) {
+    return error.shortMessage;
+  }
+  
+  // 使用 message（如果存在）
+  if ('message' in error) {
+    return error.message;
+  }
+  
+  return '交易失败';
+};
+
 const Faucet = () => {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const { address, isConnected, chain } = useAccount();
@@ -34,7 +56,6 @@ const Faucet = () => {
     reset
   } = useContractWrite();
 
-  // 新增：交易结果监听
   const { 
     isLoading: isConfirming, 
     isSuccess: isConfirmed,
@@ -44,7 +65,7 @@ const Faucet = () => {
   });
 
   const handleMint = async () => {
-    reset(); // 重置之前的状态
+    reset();
     setShowPendingModal(true);
 
     if (!isConnected) {
@@ -73,7 +94,6 @@ const Faucet = () => {
     }
   };
 
-  // 当交易完成或失败时关闭蒙版
   React.useEffect(() => {
     if (isConfirmed || receiptError) {
       setShowPendingModal(false);
@@ -86,7 +106,6 @@ const Faucet = () => {
 
   return (
     <div className="relative max-w-md mx-auto p-4 space-y-4 bg-white rounded-lg shadow-md">
-      {/* 蒙版弹窗 */}
       {showPendingModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-sm w-full text-center">
@@ -118,7 +137,6 @@ const Faucet = () => {
         </div>
       )}
 
-      {/* 主界面内容 */}
       <h1 className="text-2xl font-bold text-center">ZARTC Faucet</h1>
       
       <div className="p-3 rounded-lg bg-gray-50">
@@ -168,9 +186,7 @@ const Faucet = () => {
       {(writeError || receiptError) && (
         <div className="p-3 rounded-lg bg-red-50">
           <p className="text-red-800">
-            ✗ 错误: {(writeError || receiptError)?.message.includes('rejected') 
-              ? '用户取消了交易' 
-              : (writeError || receiptError)?.shortMessage || '交易失败'}
+            ✗ 错误: {getErrorMessage(writeError || receiptError)}
           </p>
         </div>
       )}
@@ -179,4 +195,3 @@ const Faucet = () => {
 };
 
 export default Faucet;
-
