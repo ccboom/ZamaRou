@@ -245,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
   };
 
   const fetchUserBets = async () => {
-    if (!address || !currentRound) return;
+    if (!publicClient || !address || !currentRound) return;
     try {
       const bets = await publicClient.readContract({
         address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
