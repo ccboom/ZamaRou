@@ -231,8 +231,7 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
 
   const fetchRoundResult = async (round: bigint) => {
     try {
-      publicClient = usePublicClient();
-      const result = await publicClient.readContract({
+      const result = await usePublicClient().readContract({
         address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
         abi: rouletteGameABI,
         functionName: 'roundResults',
@@ -248,7 +247,7 @@ const Sidebar: React.FC<SidebarProps> = ({ payout, onPlaceBet, selectedBet, setT
   const fetchUserBets = async () => {
     if (!address || !currentRound) return;
     try {
-      const bets = await publicClient.readContract({
+      const bets = await usePublicClient().readContract({
         address: '0x26e0aC98F3fcFCB9b17778C3a076Df9701135608',
         abi: rouletteGameABI,
         functionName: 'getUserBets',
